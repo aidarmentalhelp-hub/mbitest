@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Опросник на выгорание MBI</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        h1, h2 {
+            color: #2c3e50;
+            text-align: center;
+        }
+        #intro, #result {
+            background: #fff;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .question-block {
+            background: #fff;
+            padding: 20px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            display: none;
+        }
+        .active {
+            display: block;
+        }
+        label {
+            display: block;
+            margin: 8px 0;
+            cursor: pointer;
+            padding: 10px;
+            border-radius: 5px;
+            transition: background-color 0.2s;
+        }
+        label:hover {
+            background-color: #e8f4fc;
+        }
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            display: block;
+            margin: 20px auto;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #2980b9;
+        }
+        button:disabled {
+            background-color: #bdc3c7;
+            cursor: not-allowed;
+        }
+        .scale-result {
+            margin-top: 15px;
+            padding: 15px;
+            border-left: 5px solid #3498db;
+            background-color: #ebf5fb;
+            border-radius: 0 5px 5px 0;
+        }
+        .high {
+            border-left-color: #e74c3c;
+            background-color: #fdedec;
+        }
+        .medium {
+            border-left-color: #f39c12;
+            background-color: #fef5e7;
+        }
+        .low {
+            border-left-color: #2ecc71;
+            background-color: #eafaf1;
+        }
+        .progress-bar {
+            width: 100%;
+            background: #ecf0f1;
+            border-radius: 5px;
+            margin: 20px 0;
+        }
+        .progress {
+            height: 10px;
+            background: #3498db;
+            border-radius: 5px;
+            width: 0%;
+            transition: width 0.5s ease-in-out;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro">
+        <h1>Опросник на определение уровня психического выгорания (MBI)</h1>
+        <p><strong>Авторы:</strong> американские психологи К. Маслач и С. Джексон. Адаптирован Н.Е. Водопьяновой.</p>
+        <p>Ответьте, пожалуйста, как часто Вы испытываете чувства, перечисленные ниже в опроснике. Выберите по каждому пункту позицию, которая соответствует частоте Ваших мыслей и переживаний.</p>
+        <button id="start-btn">Начать тест</button>
+    </div>
+
+    <div class="progress-bar">
+        <div class="progress" id="progress"></div>
+    </div>
+
+    <form id="quiz-form">
+        <!-- Вопросы будут сгенерированы скриптом -->
+    </form>
+
+    <div id="result" style="display: none;">
+        <h2>Ваши результаты</h2>
+        <div id="scale-emotion"></div>
+        <div id="scale-deperson"></div>
+        <div id="scale-reduction"></div>
+        <button id="restart-btn">Пройти еще раз</button>
+    </div>
+
+    <script>
+        // Массив с вопросами
+        const questions = [
+            "1. Я чувствую себя эмоционально опустошенным",
+            "2. После работы я чувствую себя, как «выжатый лимон»",
+            "3. Утром я чувствую усталость и нежелание идти на работу",
+            "4. Я хорошо понимаю, что чувствуют мои коллеги, пациенты и стараюсь учитывать это в интересах дела",
+            "5. Я чувствую, что общаюсь с некоторыми коллегами, пациентами без теплоты и расположения к ним",
+            "6. После работы мне на некоторое время хочется уединиться",
+            "7. Я умею находить правильное решение в конфликтных ситуациях, возникающих при общении",
+            "8. Я чувствую угнетенность и апатию",
+            "9. Я уверена, что моя работа нужна людям",
+            "10. В последнее время я стала более черствой по отношению к тем, с кем я работаю",
+            "11. Я замечаю, что моя работа ожесточает меня",
+            "12. У меня много планов на будущее, и я верю в их осуществление",
+            "13. Моя работа все больше меня разочаровывает",
+            "14. Мне кажется, что я слишком много работаю",
+            "15. Бывает, что мне действительно безразлично то, что происходит с некоторыми моими подчиненными/ воспитанниками и коллегами",
+            "16. Мне хочется уединиться и отдохнуть от всего и всех",
+            "17. Я легко могу создать атмосферу доброжелательности и сотрудничества в коллективе",
+            "18. Во время работы я чувствую приятное оживление",
+            "19. Благодаря своей работе я уже сделал в жизни много действительно ценного",
+            "20. Я чувствую равнодушие и потерю интереса ко многому, что радовало меня в моей работе",
+            "21. На работе я спокойно справляюсь с эмоциональными проблемам",
+            "22. В последнее время мне кажется, что коллеги и подчиненные, пациенты все чаще перекладывают на меня груз своих проблем и обязанностей."
+        ];
+
+        const options = ["Никогда", "Очень редко", "Иногда", "Часто", "Очень часто", "Каждый день"];
+        
+        // Баллы для прямых вопросов (1, 2, 3, 5, 6, 8, 10, 11, 13, 14, 15, 16, 20, 22)
+        const directScores = [0, 1, 3, 4, 5, 6];
+        
+        // Баллы для обратных вопросов (4, 7, 9, 12, 17, 18, 19, 21) - инвертированная шкала
+        const reverseScores = [6, 5, 4, 3, 1, 0];
+
+        const form = document.getElementById('quiz-form');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const introDiv = document.getElementById('intro');
+        const resultDiv = document.getElementById('result');
+        const progressBar = document.getElementById('progress');
+
+        // Создание вопросов на странице
+        questions.forEach((question, index) => {
+            const questionDiv = document.createElement('div');
+            questionDiv.className = 'question-block';
+            questionDiv.innerHTML = `<p><strong>${question}</strong></p>`;
+            
+            // Определяем тип вопроса (прямой или обратный)
+            const isReverseQuestion = [4, 7, 9, 12, 17, 18, 19, 21].includes(index + 1);
+            const scores = isReverseQuestion ? reverseScores : directScores;
+            
+            options.forEach((opt, optIndex) => {
+                questionDiv.innerHTML += `
+                    <label>
+                        <input type="radio" name="q${index}" value="${scores[optIndex]}" required>
+                        ${opt}
+                    </label>
+                `;
+            });
+            
+            // Кнопки "Назад" и "Далее"
+            questionDiv.innerHTML += `
+                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
+                    ${index > 0 ? `<button type="button" class="nav-btn" onclick="showQuestion(${index-1})">Назад</button>` : '<span></span>'}
+                    ${index < questions.length - 1 ? `<button type="button" class="nav-btn" onclick="showQuestion(${index+1})">Далее</button>` : `<button type="button" id="submit-btn">Завершить</button>`}
+                </div>
+            `;
+            form.appendChild(questionDiv);
+        });
+
+        // Показать первый вопрос
+        function showQuestion(index) {
+            document.querySelectorAll('.question-block').forEach((q, i) => {
+                q.classList.toggle('active', i === index);
+            });
+            // Обновление прогресс-бара
+            progressBar.style.width = `${((index + 1) / questions.length) * 100}%`;
+        }
+
+        // Начать тест
+        startBtn.addEventListener('click', () => {
+            introDiv.style.display = 'none';
+            form.style.display = 'block';
+            showQuestion(0);
+        });
+
+        // Перезапустить тест
+        restartBtn.addEventListener('click', () => {
+            resultDiv.style.display = 'none';
+            form.reset();
+            form.style.display = 'block';
+            showQuestion(0);
+        });
+
+        // Обработка отправки формы
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            let scores = [];
+
+            for (let i = 0; i < questions.length; i++) {
+                scores.push(parseInt(formData.get(`q${i}`)));
+            }
+
+            // Подсчет баллов по шкалам согласно ключу
+            // Психоэмоциональное истощение: вопросы 1, 2, 3, 6, 8, 13, 14, 16, 20
+            const emotionQuestions = [1, 2, 3, 6, 8, 13, 14, 16, 20];
+            let emotionScore = 0;
+            emotionQuestions.forEach(qIndex => {
+                emotionScore += scores[qIndex - 1];
+            });
+
+            // Деперсонализация: вопросы 5, 10, 11, 15, 22
+            const depersonQuestions = [5, 10, 11, 15, 22];
+            let depersonScore = 0;
+            depersonQuestions.forEach(qIndex => {
+                depersonScore += scores[qIndex - 1];
+            });
+
+            // Редукция личных достижений: вопросы 4, 7, 9, 12, 17, 18, 19, 21
+            const reductionQuestions = [4, 7, 9, 12, 17, 18, 19, 21];
+            let reductionScore = 0;
+            reductionQuestions.forEach(qIndex => {
+                reductionScore += scores[qIndex - 1];
+            });
+
+            // Интерпретация результатов
+            function getEmotionInterpretation(score) {
+                if (score <= 10) return {level: "Крайне низкий", class: "low"};
+                if (score <= 20) return {level: "Низкий", class: "low"};
+                if (score <= 30) return {level: "Средний", class: "medium"};
+                if (score <= 40) return {level: "Высокий", class: "high"};
+                return {level: "Крайне высокий", class: "high"};
+            }
+
+            function getDepersonInterpretation(score) {
+                if (score <= 5) return {level: "Крайне низкий", class: "low"};
+                if (score <= 11) return {level: "Низкий", class: "low"};
+                if (score <= 17) return {level: "Средний", class: "medium"};
+                if (score <= 23) return {level: "Высокий", class: "high"};
+                return {level: "Крайне высокий", class: "high"};
+            }
+
+            function getReductionInterpretation(score) {
+                if (score <= 8) return {level: "Крайне низкий", class: "low"};
+                if (score <= 18) return {level: "Низкий", class: "low"};
+                if (score <= 28) return {level: "Средний", class: "medium"};
+                if (score <= 38) return {level: "Высокий", class: "high"};
+                return {level: "Крайне высокий", class: "high"};
+            }
+
+            const emotionResult = getEmotionInterpretation(emotionScore);
+            const depersonResult = getDepersonInterpretation(depersonScore);
+            const reductionResult = getReductionInterpretation(reductionScore);
+
+            // Вывод результатов
+            document.getElementById('scale-emotion').innerHTML = 
+                `<div class="scale-result ${emotionResult.class}">
+                    <strong>Психоэмоциональное истощение:</strong> ${emotionScore} баллов (${emotionResult.level} уровень)<br>
+                    <em>Процесс исчерпания эмоциональных, физических, энергетических ресурсов.</em>
+                </div>`;
+
+            document.getElementById('scale-deperson').innerHTML = 
+                `<div class="scale-result ${depersonResult.class}">
+                    <strong>Деперсонализация:</strong> ${depersonScore} баллов (${depersonResult.level} уровень)<br>
+                    <em>Личностное отдаление, проявляющееся в уменьшении контактов и повышении раздражительности.</em>
+                </div>`;
+
+            document.getElementById('scale-reduction').innerHTML = 
+                `<div class="scale-result ${reductionResult.class}">
+                    <strong>Редукция личных достижений:</strong> ${reductionScore} баллов (${reductionResult.level} уровень)<br>
+                    <em>Снижение чувства компетентности в своей работе, недовольство собой.</em>
+                </div>`;
+
+            form.style.display = 'none';
+            resultDiv.style.display = 'block';
+            progressBar.style.width = '100%';
+        });
+
+        // Инициализация кнопки отправки
+        document.getElementById('submit-btn').addEventListener('click', () => {
+            form.dispatchEvent(new Event('submit'));
+        });
+
+        // Делаем функции глобальными для работы кнопок навигации
+        window.showQuestion = showQuestion;
+    </script>
+</body>
+</html>
