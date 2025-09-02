@@ -55,8 +55,7 @@
             border-radius: 5px;
             cursor: pointer;
             font-size: 16px;
-            display: block;
-            margin: 20px auto;
+            margin: 20px 0;
             transition: background-color 0.3s;
         }
         button:hover {
@@ -65,6 +64,11 @@
         button:disabled {
             background-color: #bdc3c7;
             cursor: not-allowed;
+        }
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
         }
         .scale-result {
             margin-top: 15px;
@@ -98,6 +102,22 @@
             width: 0%;
             transition: width 0.5s ease-in-out;
         }
+        .error-message {
+            color: #e74c3c;
+            text-align: center;
+            font-weight: bold;
+            display: none;
+            margin: 10px 0;
+            padding: 10px;
+            background: #fdedec;
+            border-radius: 5px;
+        }
+        .question-error {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 10px;
+            display: none;
+        }
     </style>
 </head>
 <body>
@@ -111,6 +131,10 @@
 
     <div class="progress-bar">
         <div class="progress" id="progress"></div>
+    </div>
+
+    <div class="error-message" id="error-message">
+        Пожалуйста, ответьте на все вопросы перед завершением теста.
     </div>
 
     <form id="quiz-form">
@@ -166,12 +190,19 @@
         const introDiv = document.getElementById('intro');
         const resultDiv = document.getElementById('result');
         const progressBar = document.getElementById('progress');
+        const errorMessage = document.getElementById('error-message');
+
+        let currentQuestion = 0;
 
         // Создание вопросов на странице
         questions.forEach((question, index) => {
             const questionDiv = document.createElement('div');
             questionDiv.className = 'question-block';
-            questionDiv.innerHTML = `<p><strong>${question}</strong></p>`;
+            questionDiv.id = `question-${index}`;
+            questionDiv.innerHTML = `
+                <p><strong>${question}</strong></p>
+                <div class="question-error" id="error-${index}">Пожалуйста, выберите ответ чтобы продолжить</div>
+            `;
             
             // Определяем тип вопроса (прямой или обратный)
             const isReverseQuestion = [4, 7, 9, 12, 17, 18, 19, 21].includes(index + 1);
@@ -180,7 +211,8 @@
             options.forEach((opt, optIndex) => {
                 questionDiv.innerHTML += `
                     <label>
-                        <input type="radio" name="q${index}" value="${scores[optIndex]}" required>
+                        <input type="radio" name="q${index}" value="${scores[optIndex]}" required 
+                               onchange="hideError(${index})">
                         ${opt}
                     </label>
                 `;
@@ -188,41 +220,90 @@
             
             // Кнопки "Назад" и "Далее"
             questionDiv.innerHTML += `
-                <div style="display: flex; justify-content: space-between; margin-top: 20px;">
-                    ${index > 0 ? `<button type="button" class="nav-btn" onclick="showQuestion(${index-1})">Назад</button>` : '<span></span>'}
-                    ${index < questions.length - 1 ? `<button type="button" class="nav-btn" onclick="showQuestion(${index+1})">Далее</button>` : `<button type="button" id="submit-btn">Завершить</button>`}
+                <div class="nav-buttons">
+                    ${index > 0 ? `<button type="button" class="nav-btn" onclick="prevQuestion()">Назад</button>` : '<span></span>'}
+                    ${index < questions.length - 1 ? `<button type="button" class="nav-btn" onclick="nextQuestion(${index})">Далее</button>` : `<button type="button" onclick="finishTest()">Завершить</button>`}
                 </div>
             `;
             form.appendChild(questionDiv);
         });
 
-        // Показать первый вопрос
+        // Показать вопрос
         function showQuestion(index) {
             document.querySelectorAll('.question-block').forEach((q, i) => {
                 q.classList.toggle('active', i === index);
             });
+            currentQuestion = index;
             // Обновление прогресс-бара
             progressBar.style.width = `${((index + 1) / questions.length) * 100}%`;
+            // Скрываем общее сообщение об ошибке
+            errorMessage.style.display = 'none';
         }
 
-        // Начать тест
-        startBtn.addEventListener('click', () => {
-            introDiv.style.display = 'none';
-            form.style.display = 'block';
-            showQuestion(0);
-        });
+        // Скрыть ошибку для конкретного вопроса
+        function hideError(questionIndex) {
+            document.getElementById(`error-${questionIndex}`).style.display = 'none';
+        }
 
-        // Перезапустить тест
-        restartBtn.addEventListener('click', () => {
-            resultDiv.style.display = 'none';
-            form.reset();
-            form.style.display = 'block';
-            showQuestion(0);
-        });
+        // Следующий вопрос
+        function nextQuestion(currentIndex) {
+            const currentQuestionAnswered = document.querySelector(`#question-${currentIndex} input:checked`);
+            
+            if (!currentQuestionAnswered) {
+                // Показываем ошибку для текущего вопроса
+                document.getElementById(`error-${currentIndex}`).style.display = 'block';
+                return;
+            }
+            
+            showQuestion(currentIndex + 1);
+        }
 
-        // Обработка отправки формы
-        form.addEventListener('submit', (e) => {
-            e.preventDefault();
+        // Предыдущий вопрос
+        function prevQuestion() {
+            if (currentQuestion > 0) {
+                showQuestion(currentQuestion - 1);
+            }
+        }
+
+        // Завершение теста
+        function finishTest() {
+            const lastQuestionAnswered = document.querySelector(`#question-${questions.length - 1} input:checked`);
+            
+            if (!lastQuestionAnswered) {
+                // Показываем ошибку для последнего вопроса
+                document.getElementById(`error-${questions.length - 1}`).style.display = 'block';
+                return;
+            }
+            
+            // Проверяем, все ли вопросы отвечены
+            if (!allQuestionsAnswered()) {
+                errorMessage.style.display = 'block';
+                errorMessage.scrollIntoView({ behavior: 'smooth' });
+                return;
+            }
+
+            // Если все ответы есть, обрабатываем результаты
+            processResults();
+        }
+
+        // Проверить, все ли вопросы отвечены
+        function allQuestionsAnswered() {
+            for (let i = 0; i < questions.length; i++) {
+                const questionAnswered = document.querySelector(`input[name="q${i}"]:checked`);
+                if (!questionAnswered) {
+                    // Показываем вопрос с пропущенным ответом
+                    showQuestion(i);
+                    document.getElementById(`error-${i}`).style.display = 'block';
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        // Обработка результатов
+        function processResults() {
+            errorMessage.style.display = 'none';
+
             const formData = new FormData(form);
             let scores = [];
 
@@ -230,27 +311,15 @@
                 scores.push(parseInt(formData.get(`q${i}`)));
             }
 
-            // Подсчет баллов по шкалам согласно ключу
-            // Психоэмоциональное истощение: вопросы 1, 2, 3, 6, 8, 13, 14, 16, 20
+            // Подсчет баллов по шкалам
             const emotionQuestions = [1, 2, 3, 6, 8, 13, 14, 16, 20];
-            let emotionScore = 0;
-            emotionQuestions.forEach(qIndex => {
-                emotionScore += scores[qIndex - 1];
-            });
+            let emotionScore = emotionQuestions.reduce((sum, qIndex) => sum + scores[qIndex - 1], 0);
 
-            // Деперсонализация: вопросы 5, 10, 11, 15, 22
             const depersonQuestions = [5, 10, 11, 15, 22];
-            let depersonScore = 0;
-            depersonQuestions.forEach(qIndex => {
-                depersonScore += scores[qIndex - 1];
-            });
+            let depersonScore = depersonQuestions.reduce((sum, qIndex) => sum + scores[qIndex - 1], 0);
 
-            // Редукция личных достижений: вопросы 4, 7, 9, 12, 17, 18, 19, 21
             const reductionQuestions = [4, 7, 9, 12, 17, 18, 19, 21];
-            let reductionScore = 0;
-            reductionQuestions.forEach(qIndex => {
-                reductionScore += scores[qIndex - 1];
-            });
+            let reductionScore = reductionQuestions.reduce((sum, qIndex) => sum + scores[qIndex - 1], 0);
 
             // Интерпретация результатов
             function getEmotionInterpretation(score) {
@@ -302,16 +371,30 @@
 
             form.style.display = 'none';
             resultDiv.style.display = 'block';
-            progressBar.style.width = '100%';
+        }
+
+        // Начать тест
+        startBtn.addEventListener('click', () => {
+            introDiv.style.display = 'none';
+            form.style.display = 'block';
+            showQuestion(0);
         });
 
-        // Инициализация кнопки отправки
-        document.getElementById('submit-btn').addEventListener('click', () => {
-            form.dispatchEvent(new Event('submit'));
+        // Перезапустить тест
+        restartBtn.addEventListener('click', () => {
+            resultDiv.style.display = 'none';
+            form.reset();
+            introDiv.style.display = 'block';
+            currentQuestion = 0;
+            progressBar.style.width = '0%';
         });
 
         // Делаем функции глобальными для работы кнопок навигации
         window.showQuestion = showQuestion;
+        window.nextQuestion = nextQuestion;
+        window.prevQuestion = prevQuestion;
+        window.hideError = hideError;
+        window.finishTest = finishTest;
     </script>
 </body>
 </html>
